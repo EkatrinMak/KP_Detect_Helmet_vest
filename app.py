@@ -1,34 +1,29 @@
-from tkinter import Image
-import streamlit as st 
-import io
+import streamlit as st
 from PIL import Image
 import numpy as np
-import pandas as pd
-import os
-from ultralytics import YOLO 
-import yaml
 import cv2
+import os
+from ultralytics import YOLO
+import yaml
+import tempfile
 import time
-import IPython
 
-# Define dictionary
+# Загрузка и кэширование модели YOLO
+@st.cache_resource
+def load_model():
+    model = YOLO('best.pt')
+    return model
+
+import yaml
 dict_file = {
     'train': '/content/images/val',
     'val': '/content/images/test',
     'nc': 3,
-    'names': ['helmet', 'vest', 'head',]
-}
-
-# Save dictionary to YAML file
+    'names': ['helmet', 'vest', 'head',]}
 with open('hard_head.yaml', 'w+') as file:
     documents = yaml.dump(dict_file, file)
 
-# Load YAML file
-with open('hard_head.yaml', 'r') as file:
-    config = yaml.safe_load(file)
-
-# Load YOLO model
-model = YOLO('best.pt')
+model = load_model()
 
 # Function to draw bounding boxes and labels on image
 def box_label(image, box, label='', color=(128, 128, 128), txt_color=(255, 255, 255)):
@@ -76,6 +71,7 @@ def plot_bboxes(image, boxes, labels=[], colors=[], score=True, conf=None):
 
     # Show image
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    
 
     return image
 
@@ -90,9 +86,7 @@ def plot_results(results, image_path=None, image_data=None, result_name=None, bo
         img = None
         if not box_type:
             boxes = result.boxes.data
-            #conf = result.probs.top1
             img = plot_bboxes(image, boxes, labels=labels, score=True)
-            #img = plot_bboxes(image, boxes, labels=labels, score=None)
         else:
             img = plot_bboxes(image, result, score=True)
         result_image_name = result_name if result_name else image_path.split('/')[-1]
@@ -105,7 +99,7 @@ image = Image.open('Frame 48099524.jpg')
 
 # Function to predict the name of the image
 def predict_name(test_image):
-    labels = {0: u'__background__', 1: u'helmet', 2: u'vest',3: u'head'}
+    labels = {0: u'__background__', 1: u'helmet', 2: u'vest', 3: u'head'}
     path = '/content/images/test/' + test_image
 
     results = model.predict(path)
@@ -115,9 +109,8 @@ def predict_name(test_image):
 
     result_name = 'hardhat_pred_' + test_image
     print(result_name)
-    plot_results(results, image_path=path, labels=labels, result_name = result_name)
+    plot_results(results, image_path=path, labels=labels, result_name=result_name)
     time.sleep(1)
-    return IPython.display.Image("/content/results/" + result_name)
 
 # Загрузите изображение
 image = Image.open('Frame 48099524.jpg')
@@ -132,10 +125,12 @@ if uploaded_file is not None:
     # Detect objects in image
     results = model.predict(image)
 
+    # Define labels for detected objects
+    labels = {0: u'__background__', 1: u'helmet', 2: u'vest', 3: u'head'}
+
     # Plot bounding boxes on image
     image_np = np.array(image)
-    image_np = plot_bboxes(image_np, results[0].boxes.data, labels=config['names'], colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)]
-)
+    image_np = plot_bboxes(image_np, results[0].boxes.data, labels=labels, colors=[(255, 0, 0), (0, 255, 0), (0, 0, 255)])
     st.image(image_np, caption='Результаты детекции', use_column_width=True)
 
     # Predict the name of the image

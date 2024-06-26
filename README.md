@@ -50,7 +50,7 @@
 - opencv-python
 - ultralytics
 - pyyaml
-- tempfile
+
 
 Убедитесь, что все библиотеки установлены перед запуском проекта.
 
